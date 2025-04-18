@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         GitHub Feed Pre-release Filter
 // @namespace    https://github.com/yourusername
-// @version      0.2
+// @version      0.3
 // @description  Hide pre‑release events (nightly/dev/rc) from the GitHub "For You" feed
 // @author       Your Name
 // @match        https://github.com/
-// @match        https://github.com
+// @match        https://github.com/?*
+// @match        https://github.com/dashboard*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -13,23 +14,37 @@
 (function() {
   'use strict';
 
+  // ◼︎ edit these to taste; no ^…$ anchoring, just “does it contain…?”
   const PRE_RELEASE_PATTERNS = [
     'nightly',
     'dev.*',
     'rc.*'
   ];
-  const regexes = PRE_RELEASE_PATTERNS.map(p => new RegExp(`^${p}$`, 'i'));
+  const regexes = PRE_RELEASE_PATTERNS.map(p => new RegExp(p, 'i'));
+
+  // look for any link that points to a GitHub release tag
+  const LINK_SELECTOR = 'a[href*="/releases/tag/"]';
 
   function isPreRelease(tag) {
-    return regexes.some(rx => rx.test(tag.trim()));
+    return regexes.some(rx => rx.test(tag));
   }
 
   function processArticle(article) {
+    // one‑and‑done
     if (article.dataset.gffProcessed) return;
     article.dataset.gffProcessed = 'true';
 
-    const link = article.querySelector('h3 a');
-    if (link && isPreRelease(link.textContent)) {
+    const link = article.querySelector(LINK_SELECTOR);
+    if (!link) {
+      console.debug('[GFF] no release link found in', article);
+      return;
+    }
+
+    const tagText = link.textContent.trim();
+    console.debug(`[GFF] saw release tag "${tagText}" – testing against`, PRE_RELEASE_PATTERNS);
+
+    if (isPreRelease(tagText)) {
+      console.info(`[GFF] hiding pre-release ${tagText}`);
       article.style.setProperty('display', 'none', 'important');
     }
   }
@@ -38,23 +53,30 @@
     document.querySelectorAll('article').forEach(processArticle);
   }
 
-  // 1) Initial scan once the page is idle:
-  window.requestIdleCallback(scanAll, { timeout: 2000 });
+  // 1) initial pass once idle
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(scanAll, { timeout: 3000 });
+  } else {
+    setTimeout(scanAll, 2000);
+  }
 
-  // 2) MutationObserver for any late-inserted articles:
-  const observer = new MutationObserver(muts => {
+  // 2) watch for any new nodes
+  const mo = new MutationObserver(muts => {
     muts.forEach(m => {
-      m.addedNodes.forEach(node => {
-        if (node.nodeType !== 1) return;
-        if (node.tagName === 'ARTICLE') processArticle(node);
-        else node.querySelectorAll('article').forEach(processArticle);
+      m.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        if (n.tagName === 'ARTICLE') processArticle(n);
+        else n.querySelectorAll('article').forEach(processArticle);
       });
     });
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  mo.observe(document.body, { childList: true, subtree: true });
 
-  // 3) Re-scan on GitHub’s PJAX/SPA navigation events:
-  ['pjax:end', 'turbo:load', 'github:container:updated'].forEach(evt =>
+  // 3) GitHub SPA navigation hooks
+  ['pjax:end','turbo:load','github:container:updated'].forEach(evt =>
     document.addEventListener(evt, scanAll, true)
   );
+
+  // 4) fallback sweep every 3s
+  setInterval(scanAll, 3000);
 })();
