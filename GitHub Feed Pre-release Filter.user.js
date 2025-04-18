@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         GitHub Feed Pre-release Filter
-// @namespace    https://github.com/yourusername
+// @namespace    https://github.com/cdfmlr
 // @version      0.3
-// @description  Hide pre‑release events (nightly/dev/rc) from the GitHub "For You" feed
-// @author       Your Name
+// @description  Hide pre‑release events (nightly/dev/rc) from the new GitHub dashboard "For You" feed. (This script is produced by vibe coding, used it carefully.)
+// @author       CDFMLR
 // @match        https://github.com/
-// @match        https://github.com/?*
 // @match        https://github.com/dashboard*
 // @grant        none
 // @run-at       document-idle
@@ -18,7 +17,8 @@
   const PRE_RELEASE_PATTERNS = [
     'nightly',
     'dev.*',
-    'rc.*'
+    'rc.*',
+    '预览'
   ];
   const regexes = PRE_RELEASE_PATTERNS.map(p => new RegExp(p, 'i'));
 
@@ -36,12 +36,12 @@
 
     const link = article.querySelector(LINK_SELECTOR);
     if (!link) {
-      console.debug('[GFF] no release link found in', article);
+      // console.debug('[GFF] no release link found in', article);
       return;
     }
 
     const tagText = link.textContent.trim();
-    console.debug(`[GFF] saw release tag "${tagText}" – testing against`, PRE_RELEASE_PATTERNS);
+    // console.debug(`[GFF] saw release tag "${tagText}" – testing against`, PRE_RELEASE_PATTERNS);
 
     if (isPreRelease(tagText)) {
       console.info(`[GFF] hiding pre-release ${tagText}`);
@@ -80,3 +80,4 @@
   // 4) fallback sweep every 3s
   setInterval(scanAll, 3000);
 })();
+
