@@ -17,7 +17,10 @@
   const PRE_RELEASE_PATTERNS = [
     'nightly',
     'dev.*',
+    'alpha.*',
+    'beta.*',
     'rc.*',
+    'preview',
     '预览'
   ];
   const regexes = PRE_RELEASE_PATTERNS.map(p => new RegExp(p, 'i'));
