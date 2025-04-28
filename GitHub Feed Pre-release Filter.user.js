@@ -24,12 +24,25 @@
     '预览'
   ];
   const regexes = PRE_RELEASE_PATTERNS.map(p => new RegExp(p, 'i'));
+  console.debug('[GFF] testing release tags against regexes:', regexes)
 
   // look for any link that points to a GitHub release tag
   const LINK_SELECTOR = 'a[href*="/releases/tag/"]';
+  const TAG_TEXT = new RegExp('/releases/tag/(.*)', 'i')
 
-  function isPreRelease(tag) {
-    return regexes.some(rx => rx.test(tag));
+  function getTagText(link) {
+    // the underlying git tag
+    const arr = TAG_TEXT.exec(link);
+    if (arr && (arr.length !== 2)) { // failed: arr==null, success: arr[0]=="original input str", arr[1]=="the first extracted groud"
+      return arr[1];
+    }  
+
+    // fallback to the display release name filled by user (should never happen)
+    return link.textContent.trim();
+  }
+
+  function isPreRelease(tag) { // returns the matched pattern
+    return regexes.find(rx => rx.test(tag));
   }
 
   function processArticle(article) {
@@ -38,18 +51,24 @@
     article.dataset.gffProcessed = 'true';
 
     const link = article.querySelector(LINK_SELECTOR);
+    console.debug(article)
     if (!link) {
-      // console.debug('[GFF] no release link found in', article);
+      console.debug('[GFF] no release link found in', article);
       return;
     }
 
-    const tagText = link.textContent.trim();
-    // console.debug(`[GFF] saw release tag "${tagText}" – testing against`, PRE_RELEASE_PATTERNS);
+    console.debug(`[GFF] saw release link: ${link}`, link)
+    
+    const tagText = getTagText(link);
+    console.debug(`[GFF] get release tag text ${tagText} from link ${link}`)
 
-    if (isPreRelease(tagText)) {
-      console.info(`[GFF] hiding pre-release ${tagText}`);
+    const matchedPattern = isPreRelease(tagText)
+    if (matchedPattern) {
+      console.info(`[GFF] ⛔️ hiding pre-release ${tagText}`, link.href, matchedPattern);
       article.style.setProperty('display', 'none', 'important');
-    }
+    } else {
+      console.info(`[GFF] ✅ display release ${tagText}`, link.href);
+	  }
   }
 
   function scanAll() {
