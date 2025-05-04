@@ -33,7 +33,7 @@
   function getTagText(link) {
     // the underlying git tag
     const arr = TAG_TEXT.exec(link);
-    if (arr && (arr.length !== 2)) { // failed: arr==null, success: arr[0]=="original input str", arr[1]=="the first extracted groud"
+    if (arr && (arr.length === 2)) { // failed: arr==null, success: arr[0]=="original input str", arr[1]=="the first extracted groud"
       return arr[1];
     }  
 
